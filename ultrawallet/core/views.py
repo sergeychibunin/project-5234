@@ -1,3 +1,10 @@
 from django.shortcuts import render
+from core.models import Person
 
-# Create your views here.
+
+def transfer2m(request):
+    persons = Person.objects.select_related('user').all()
+    # todo form
+    return render(request, 'transfers/to_many.html', {
+        'persons': persons
+    })

@@ -1,0 +1,20 @@
+{% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
+
+<form action="{% url 'transfer2m' %}" method="post">
+    {% csrf_token %}
+    <label for="from-person">From person</label><br>
+
+    <select name="from-person" id="from-person">
+        {% for person in persons %}
+        <option value="{{ person.user.id }}">{{ person.user.first_name }} {{ person.user.last_name }}</option>
+        {% endfor %}
+    </select>
+
+
+    <br><label for="inns">INN's list separated by a space</label><br>
+    <input id="inns" type="text" name="inns">
+
+    <br><label for="amount">Amount</label><br>
+    <input id="amount" type="number" name="amount">
+    <br><input type="submit" value="transfer">
+</form>
