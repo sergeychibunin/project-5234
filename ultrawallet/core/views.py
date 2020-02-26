@@ -4,7 +4,7 @@ from django.db import transaction
 from core.models import Person
 
 
-def parse_inn(inns: str) -> tuple:  # TODO test
+def parse_inn(inns: str) -> tuple:
     if not inns:
         return set(), 'INN\'s list is empty'
     try:
@@ -14,25 +14,24 @@ def parse_inn(inns: str) -> tuple:  # TODO test
     return inn_set, ''
 
 
-def parse_amount(amount: str) -> tuple:  # TODO test
+def parse_amount(amount: str) -> tuple:
     if not amount:
         return 0, 'Amount is empty'
     try:
-        # TODO check negative amount
         return Decimal(amount), ''
     except InvalidOperation:
         return 0, 'Amount is wrong'
 
 
-def parse_person(person: str, persons: list) -> tuple:  # TODO test
-    from_person_id = int(person)
+def parse_person(person: str, persons: list) -> tuple:
     try:
+        from_person_id = int(person)
         return list(filter(lambda x: x.user_id == from_person_id, persons))[0], ''
-    except IndexError:
-        return [], 'Person is wrong'
+    except (IndexError, ValueError):
+        return None, 'Person is wrong'
 
 
-def validate_inns(inns: set) -> list: # TODO test
+def validate_inns(inns: set) -> list:
     errors = []
     to_persons_inn_list = [person.inn for person in (Person.objects.filter(inn__in=inns))]
     for typed_inn in inns:
@@ -78,7 +77,6 @@ def transfer2m(request):
                 'error_message': 'Not enough money'
             })
 
-        # todo test money with '2e10'
         Person.transfer2m(from_person, amount, inn_set, persons)
 
     return render(request, 'transfers/to_many.html', {

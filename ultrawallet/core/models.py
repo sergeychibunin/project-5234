@@ -1,4 +1,3 @@
-from typing import Type
 from django.db import models
 from django.db.models.query import QuerySet
 from django.contrib.auth.models import User
@@ -10,19 +9,19 @@ class Person(models.Model):
     inn = models.IntegerField('INN')
     account = models.DecimalField('Amount of money in RUB', max_digits=14, decimal_places=2)
 
-    def __init__(self, *args, **kwargs):  # todo test
+    def __init__(self, *args, **kwargs):
         super(Person, self).__init__(*args, **kwargs)
         money_context = getcontext()
         money_context.prec = 16
         money_context.rounding = ROUND_FLOOR
 
-    def is_can_pay(self, amount):  # TODO test
-        if self.account < amount:
+    def is_can_pay(self, amount):
+        if amount <= 0 or self.account < amount:
             return False
         return True
 
     @staticmethod
-    def transfer2m(from_person: models.Model, amount: int, inn_set: set, persons: QuerySet):  # todo test
+    def transfer2m(from_person: models.Model, amount: int, inn_set: set, persons: QuerySet):
         """Transfer money from one person to many persons by equals parts for each"""
         credit_for_each = Decimal(amount) / len(inn_set)
         debit = credit_for_each * len(inn_set)
@@ -33,5 +32,5 @@ class Person(models.Model):
             lucky.save()
 
 
-def round_decimal(dec):  # TODO test
+def round_decimal(dec):
     return dec.quantize(Decimal('0.01'), ROUND_FLOOR)
