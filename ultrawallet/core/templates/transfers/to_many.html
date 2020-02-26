@@ -1,4 +1,4 @@
-{% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
+{% if error_message %}<p><strong>{{ error_message|linebreaksbr }}</strong></p>{% endif %}
 
 <form action="{% url 'transfer2m' %}" method="post">
     {% csrf_token %}
