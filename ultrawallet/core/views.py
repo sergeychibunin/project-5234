@@ -1,10 +1,10 @@
-from decimal import Decimal, InvalidOperation, getcontext, ROUND_HALF_UP, ROUND_HALF_DOWN
+from decimal import Decimal, InvalidOperation
 from django.shortcuts import render
 from django.db import transaction
 from core.models import Person
 
 
-def parse_inn(inns: str) -> tuple:
+def parse_inn(inns: str) -> tuple:  # TODO test
     if not inns:
         return set(), 'INN\'s list is empty'
     try:
@@ -14,13 +14,31 @@ def parse_inn(inns: str) -> tuple:
     return inn_set, ''
 
 
-def parse_amount(amount: str) -> tuple:
+def parse_amount(amount: str) -> tuple:  # TODO test
     if not amount:
         return 0, 'Amount is empty'
     try:
+        # TODO check negative amount
         return Decimal(amount), ''
     except InvalidOperation:
         return 0, 'Amount is wrong'
+
+
+def parse_person(person: str, persons: list) -> tuple:  # TODO test
+    from_person_id = int(person)
+    try:
+        return list(filter(lambda x: x.user_id == from_person_id, persons))[0], ''
+    except IndexError:
+        return [], 'Person is wrong'
+
+
+def validate_inns(inns: set) -> list: # TODO test
+    errors = []
+    to_persons_inn_list = [person.inn for person in (Person.objects.filter(inn__in=inns))]
+    for typed_inn in inns:
+        if typed_inn not in to_persons_inn_list:
+            errors.append('{} is unattached INN'.format(typed_inn))
+    return errors
 
 
 @transaction.atomic
@@ -31,51 +49,37 @@ def transfer2m(request):
     if request.method == 'POST':
         error_message = 'Success'
         error_messages = []
+
         inn_set, _error_message = parse_inn(request.POST['inns'])
         if _error_message:
             error_messages += [_error_message]
+
         amount, _error_message = parse_amount(request.POST['amount'])
         if _error_message:
             error_messages += [_error_message]
-        from_person_id = int(request.POST['from-person'])
-        from_person = list(filter(lambda x: x.user_id == from_person_id, persons))[0]
 
-        to_persons = Person.objects.filter(inn__in=inn_set)
+        from_person, _error_message = parse_person(request.POST['from-person'], persons)
+        if _error_message:
+            error_messages += [_error_message]
 
-        # todo detect wrong INN
-        to_persons_inn_list = [person.inn for person in to_persons]
-        for typed_inn in inn_set:
-            if typed_inn not in to_persons_inn_list:
-                error_messages.append('{} is unattached INN'.format(typed_inn))
+        _error_messages = validate_inns(inn_set)
+        if _error_messages:
+            error_messages += _error_messages
+
         if error_messages:
             return render(request, 'transfers/to_many.html', {
                 'persons': persons,
                 'error_message': '\n'.join(error_messages)
             })
-        else:
-            to_persons_list = list(filter(lambda x: x.inn in inn_set, persons))
 
-        # todo check money
-        if from_person.account < amount:
+        if not from_person.is_can_pay(amount):
             return render(request, 'transfers/to_many.html', {
                 'persons': persons,
                 'error_message': 'Not enough money'
             })
 
         # todo test money with '2e10'
-        # todo transfer with a transaction
-        money_context = getcontext()
-        money_context.prec = 3
-        money_context.rounding = ROUND_HALF_DOWN
-
-        credit_for_each = amount / len(inn_set)
-        debit = credit_for_each * len(inn_set)
-        from_person.account -= debit
-        import pudb; pu.db
-        from_person.save()
-        for lucky in to_persons_list:
-            lucky.account += credit_for_each
-            lucky.save()
+        Person.transfer2m(from_person, amount, inn_set, persons)
 
     return render(request, 'transfers/to_many.html', {
         'persons': persons,
